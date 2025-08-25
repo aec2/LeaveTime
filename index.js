@@ -9,9 +9,11 @@ const {
   Notification,
 } = require("electron");
 const path = require("path");
+const SSRSService = require("./ssrs-service");
 
 let win;
 let tray;
+let ssrsService;
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -76,6 +78,31 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     { label: "Show/Hide", click: toggleWindow },
+    { type: "separator" },
+    { 
+      label: "Use Current Time", 
+      click: () => {
+        if (win && win.webContents) {
+          win.webContents.send("tray:use-now");
+        }
+      }
+    },
+    { 
+      label: "Set to 08:00", 
+      click: () => {
+        if (win && win.webContents) {
+          win.webContents.send("tray:set-0800");
+        }
+      }
+    },
+    { 
+      label: "Fetch from SSRS", 
+      click: () => {
+        if (win && win.webContents) {
+          win.webContents.send("tray:fetch-ssrs");
+        }
+      }
+    },
     { type: "separator" },
     {
       label: "Quit",
@@ -243,6 +270,33 @@ async function renderTextToNativeImage(text) {
     rendering = false;
   }
 }
+
+// SSRS IPC Handlers
+ipcMain.handle("test-ssrs-connection", async (event, config) => {
+  try {
+    if (!ssrsService) {
+      ssrsService = new SSRSService();
+    }
+    ssrsService.configure(config);
+    return await ssrsService.testConnection();
+  } catch (error) {
+    console.error("SSRS connection test failed:", error);
+    return { success: false, message: error.message };
+  }
+});
+
+ipcMain.handle("fetch-entrance-time", async (event, config) => {
+  try {
+    if (!ssrsService) {
+      ssrsService = new SSRSService();
+    }
+    ssrsService.configure(config);
+    return await ssrsService.fetchEntranceTime(config.employeeId);
+  } catch (error) {
+    console.error("SSRS fetch entrance time failed:", error);
+    return { success: false, message: error.message };
+  }
+});
 
 ipcMain.on("update-leave-time", (_evt, payload) => {
   const { start, leave } = payload || {};

@@ -169,6 +169,107 @@
       .btn:hover {
         border-color: var(--accent);
       }
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .settings-section {
+        margin-top: 18px;
+        padding: 18px;
+        background: #0d1125;
+        border: 1px solid #23294b;
+        border-radius: 12px;
+      }
+      .settings-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+      .settings-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .toggle-btn {
+        background: none;
+        border: none;
+        color: var(--accent);
+        cursor: pointer;
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        -webkit-app-region: no-drag;
+      }
+      .toggle-btn:hover {
+        background: rgba(122, 162, 255, 0.1);
+      }
+      .settings-content {
+        display: none;
+      }
+      .settings-content.show {
+        display: block;
+      }
+      .settings-row {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      .settings-field {
+        flex: 1;
+        min-width: 200px;
+      }
+      .settings-field input {
+        width: 100%;
+        font-size: 13px;
+        padding: 8px 10px;
+        color: #fff;
+        background: #111633;
+        border: 1px solid #2b3157;
+        border-radius: 8px;
+        outline: none;
+        -webkit-app-region: no-drag;
+      }
+      .settings-field input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(122, 162, 255, 0.2);
+      }
+      .checkbox-field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .checkbox-field input[type="checkbox"] {
+        -webkit-app-region: no-drag;
+      }
+      .status-message {
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        margin-top: 8px;
+      }
+      .status-success {
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: #4ade80;
+      }
+      .status-error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: var(--danger);
+      }
+      .status-info {
+        background: rgba(122, 162, 255, 0.1);
+        border: 1px solid rgba(122, 162, 255, 0.3);
+        color: var(--accent);
+      }
     </style>
   </head>
   <body>
@@ -182,6 +283,88 @@
           <div id="rangeHelp" class="helper">
             Pick any time between 07:30 and 09:30.
           </div>
+        </div>
+        <div class="field" style="display: flex; align-items: flex-end;">
+          <button class="btn primary" id="fetchBtn" style="padding: 12px 16px; height: fit-content;">
+            Fetch from SSRS
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-header">
+          <div class="settings-title">SSRS Report Configuration</div>
+          <button class="toggle-btn" id="settingsToggle">Configure</button>
+        </div>
+        <div class="settings-content" id="settingsContent">
+          <div class="settings-row">
+            <div class="settings-field">
+              <label for="serverUrl">SSRS Server URL</label>
+              <input 
+                type="text" 
+                id="serverUrl" 
+                placeholder="http://your-server/ReportServer"
+              />
+            </div>
+            <div class="settings-field">
+              <label for="reportPath">Report Path</label>
+              <input 
+                type="text" 
+                id="reportPath" 
+                placeholder="/Reports/AttendanceReport"
+              />
+            </div>
+          </div>
+          
+          <div class="settings-row">
+            <div class="settings-field">
+              <label for="username">Username</label>
+              <input 
+                type="text" 
+                id="username" 
+                placeholder="domain\\username or username"
+              />
+            </div>
+            <div class="settings-field">
+              <label for="password">Password</label>
+              <input 
+                type="password" 
+                id="password" 
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+          
+          <div class="settings-row">
+            <div class="settings-field">
+              <label for="employeeId">Employee ID (optional)</label>
+              <input 
+                type="text" 
+                id="employeeId" 
+                placeholder="Leave empty for current user"
+              />
+            </div>
+            <div class="settings-field">
+              <label for="domain">Domain (optional)</label>
+              <input 
+                type="text" 
+                id="domain" 
+                placeholder="COMPANY"
+              />
+            </div>
+          </div>
+          
+          <div class="checkbox-field">
+            <input type="checkbox" id="useWindowsAuth" checked />
+            <label for="useWindowsAuth">Use Windows Authentication</label>
+          </div>
+          
+          <div style="display: flex; gap: 10px; margin-top: 12px;">
+            <button class="btn" id="testConnectionBtn">Test Connection</button>
+            <button class="btn" id="saveSettingsBtn">Save Settings</button>
+          </div>
+          
+          <div id="statusMessage" class="status-message" style="display: none;"></div>
         </div>
       </div>
 
@@ -219,6 +402,21 @@
       const startEchoEl = document.getElementById("startEcho");
       const rangeHelpEl = document.getElementById("rangeHelp");
       const hideBtn = document.getElementById("hideBtn");
+      
+      // SSRS elements
+      const fetchBtn = document.getElementById("fetchBtn");
+      const settingsToggle = document.getElementById("settingsToggle");
+      const settingsContent = document.getElementById("settingsContent");
+      const serverUrlInput = document.getElementById("serverUrl");
+      const reportPathInput = document.getElementById("reportPath");
+      const usernameInput = document.getElementById("username");
+      const passwordInput = document.getElementById("password");
+      const employeeIdInput = document.getElementById("employeeId");
+      const domainInput = document.getElementById("domain");
+      const useWindowsAuthInput = document.getElementById("useWindowsAuth");
+      const testConnectionBtn = document.getElementById("testConnectionBtn");
+      const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+      const statusMessage = document.getElementById("statusMessage");
 
       function toMinutes(hhmm) {
         const [h, m] = hhmm.split(":").map(Number);
@@ -275,8 +473,123 @@
       // Init
       startInput.value = "08:00";
       update();
+      loadSSRSSettings(); // Load saved SSRS configuration
       document.getElementById("exampleEcho").textContent =
         "Examples: 07:30 → 17:15, 08:00 → 17:45, 09:30 → 19:15";
+
+      // SSRS Functions
+      function showStatus(message, type = 'info') {
+        statusMessage.textContent = message;
+        statusMessage.className = `status-message status-${type}`;
+        statusMessage.style.display = 'block';
+        
+        // Auto-hide success messages after 3 seconds
+        if (type === 'success') {
+          setTimeout(() => {
+            statusMessage.style.display = 'none';
+          }, 3000);
+        }
+      }
+
+      function hideStatus() {
+        statusMessage.style.display = 'none';
+      }
+
+      function getSSRSConfig() {
+        return {
+          serverUrl: serverUrlInput.value.trim(),
+          reportPath: reportPathInput.value.trim(),
+          username: usernameInput.value.trim(),
+          password: passwordInput.value,
+          employeeId: employeeIdInput.value.trim(),
+          domain: domainInput.value.trim(),
+          useWindowsAuth: useWindowsAuthInput.checked
+        };
+      }
+
+      function setSSRSConfig(config) {
+        serverUrlInput.value = config.serverUrl || '';
+        reportPathInput.value = config.reportPath || '';
+        usernameInput.value = config.username || '';
+        passwordInput.value = config.password || '';
+        employeeIdInput.value = config.employeeId || '';
+        domainInput.value = config.domain || '';
+        useWindowsAuthInput.checked = config.useWindowsAuth !== false;
+      }
+
+      function loadSSRSSettings() {
+        const saved = localStorage.getItem('ssrsConfig');
+        if (saved) {
+          try {
+            const config = JSON.parse(saved);
+            setSSRSConfig(config);
+          } catch (e) {
+            console.error('Failed to load SSRS settings:', e);
+          }
+        }
+      }
+
+      function saveSSRSSettings() {
+        const config = getSSRSConfig();
+        localStorage.setItem('ssrsConfig', JSON.stringify(config));
+        showStatus('Settings saved successfully', 'success');
+      }
+
+      async function testSSRSConnection() {
+        const config = getSSRSConfig();
+        if (!config.serverUrl) {
+          showStatus('Please enter SSRS Server URL', 'error');
+          return;
+        }
+
+        testConnectionBtn.disabled = true;
+        testConnectionBtn.textContent = 'Testing...';
+        showStatus('Testing connection...', 'info');
+
+        try {
+          const result = await ipcRenderer.invoke('test-ssrs-connection', config);
+          if (result.success) {
+            showStatus('Connection successful!', 'success');
+          } else {
+            showStatus(`Connection failed: ${result.message}`, 'error');
+          }
+        } catch (error) {
+          showStatus(`Test failed: ${error.message}`, 'error');
+        } finally {
+          testConnectionBtn.disabled = false;
+          testConnectionBtn.textContent = 'Test Connection';
+        }
+      }
+
+      async function fetchEntranceTime() {
+        const config = getSSRSConfig();
+        if (!config.serverUrl || !config.reportPath) {
+          showStatus('Please configure SSRS settings first', 'error');
+          settingsContent.classList.add('show');
+          settingsToggle.textContent = 'Hide';
+          return;
+        }
+
+        fetchBtn.disabled = true;
+        fetchBtn.textContent = 'Fetching...';
+        showStatus('Fetching entrance time from SSRS...', 'info');
+
+        try {
+          const result = await ipcRenderer.invoke('fetch-entrance-time', config);
+          if (result.success) {
+            startInput.value = result.entranceTime;
+            update();
+            showStatus(`Entrance time fetched: ${result.entranceTime} (from ${result.source})`, 'success');
+          } else {
+            showStatus(`Failed to fetch: ${result.message}`, 'error');
+          }
+        } catch (error) {
+          showStatus(`Fetch failed: ${error.message}`, 'error');
+        } finally {
+          fetchBtn.disabled = false;
+          fetchBtn.textContent = 'Fetch from SSRS';
+        }
+      }
 
       // Events
       startInput.addEventListener("input", update);
@@ -284,12 +597,26 @@
         window.close();
       }); // triggers "close to tray" in main
 
+      // SSRS Events
+      settingsToggle.addEventListener('click', () => {
+        const isShow = settingsContent.classList.toggle('show');
+        settingsToggle.textContent = isShow ? 'Hide' : 'Configure';
+        if (!isShow) {
+          hideStatus();
+        }
+      });
+
+      fetchBtn.addEventListener('click', fetchEntranceTime);
+      testConnectionBtn.addEventListener('click', testSSRSConnection);
+      saveSettingsBtn.addEventListener('click', saveSSRSSettings);
+
       // Tray menu commands -> renderer
       ipcRenderer.on("tray:use-now", () => useCurrentTimeClamped());
       ipcRenderer.on("tray:set-0800", () => {
         startInput.value = "08:00";
         update();
       });
+      ipcRenderer.on("tray:fetch-ssrs", () => fetchEntranceTime());
     </script>
   </body>
 </html>
