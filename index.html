@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
+    <title>My Leave Time</title>
+    <style>
+      :root {
+        --bg: #0f1221;
+        --card: #161a2f;
+        --accent: #7aa2ff;
+        --muted: #9aa4b2;
+        --text: #e9edf3;
+        --danger: #ff8a8a;
+        --shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+        --radius: 18px;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(
+          1200px 600px at 50% -20%,
+          #20264b 0%,
+          var(--bg) 60%
+        );
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .card {
+        width: min(92vw, 680px);
+        background: var(--card);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 28px 28px 20px;
+      }
+      .title {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #fff;
+      }
+      .title .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 18px var(--accent);
+      }
+      .row {
+        display: flex;
+        gap: 18px;
+        margin-top: 18px;
+        flex-wrap: wrap;
+      }
+      .field {
+        flex: 1 1 220px;
+        background: #0e1224;
+        border: 1px solid #252b49;
+        border-radius: 12px;
+        padding: 14px 16px;
+      }
+      label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 8px;
+        letter-spacing: 0.2px;
+      }
+      input[type="time"] {
+        width: 100%;
+        font-size: 18px;
+        padding: 10px 12px;
+        color: #fff;
+        background: #111633;
+        border: 1px solid #2b3157;
+        border-radius: 10px;
+        outline: none;
+      }
+      input[type="time"]:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(122, 162, 255, 0.2);
+      }
+      .helper {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .warn {
+        color: var(--danger);
+      }
+      .big {
+        margin-top: 22px;
+        background: linear-gradient(180deg, #0d1125, #0a0e1e);
+        border: 1px solid #23294b;
+        border-radius: 16px;
+        padding: 26px 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .big .label {
+        color: var(--muted);
+        font-size: 13px;
+        letter-spacing: 0.3px;
+      }
+      .big .time {
+        font-variant-numeric: tabular-nums;
+        font-size: 56px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        color: #fff;
+      }
+      .sub {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .pill {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #0f1430;
+        border: 1px solid #2a2f56;
+        color: #c6cce4;
+        font-size: 12px;
+      }
+      .footer {
+        margin-top: 16px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .btn {
+        border: 1px solid #2b3157;
+        background: #12173a;
+        color: #dfe7ff;
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="title"><span class="dot"></span> My Leave Time</div>
+
+      <div class="row">
+        <div class="field">
+          <label for="start">Start time (flex: 07:30–09:30)</label>
+          <input id="start" type="time" min="07:30" max="09:30" step="300" />
+          <div id="rangeHelp" class="helper">
+            Pick any time between 07:30 and 09:30.
+          </div>
+        </div>
+      </div>
+
+      <section class="big">
+        <div>
+          <div class="label">Calculated leave time</div>
+          <div id="leaveTime" class="time">—:—</div>
+        </div>
+        <div>
+          <div class="label">Selected start</div>
+          <div id="startEcho" class="pill">—:—</div>
+        </div>
+      </section>
+
+      <div class="sub">
+        <div class="pill">8h work + 45m break = add 9h 45m</div>
+        <div id="exampleEcho" class="helper">Example: 08:00 → 17:45</div>
+      </div>
+
+      <div class="footer">
+        <button class="btn" id="nowBtn">Use current time (clamped)</button>
+        <button class="btn" id="defaultsBtn">Set to 08:00</button>
+        <button class="btn" id="hideBtn">Hide to tray</button>
+      </div>
+    </main>
+
+    <script>
+      // Electron ipcRenderer is available because nodeIntegration=true & contextIsolation=false in index.js
+      const { ipcRenderer } = require("electron");
+
+      const FLEX_MIN = toMinutes("07:30");
+      const FLEX_MAX = toMinutes("09:30");
+      const ADD_MINUTES = 9 * 60 + 45;
+
+      const startInput = document.getElementById("start");
+      const leaveTimeEl = document.getElementById("leaveTime");
+      const startEchoEl = document.getElementById("startEcho");
+      const rangeHelpEl = document.getElementById("rangeHelp");
+      const nowBtn = document.getElementById("nowBtn");
+      const defaultsBtn = document.getElementById("defaultsBtn");
+      const hideBtn = document.getElementById("hideBtn");
+
+      function toMinutes(hhmm) {
+        const [h, m] = hhmm.split(":").map(Number);
+        return h * 60 + m;
+      }
+      function fromMinutes(total) {
+        total = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
+        const h = Math.floor(total / 60),
+          m = total % 60;
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      }
+      function clamp(v, min, max) {
+        return Math.min(Math.max(v, min), max);
+      }
+
+      function update() {
+        const val = startInput.value || "08:00";
+        let startMin = toMinutes(val);
+        const inRange = startMin >= FLEX_MIN && startMin <= FLEX_MAX;
+
+        if (!inRange) {
+          rangeHelpEl.textContent = "Out of range — clamped to 07:30–09:30.";
+          rangeHelpEl.classList.add("warn");
+        } else {
+          rangeHelpEl.textContent = "Pick any time between 07:30 and 09:30.";
+          rangeHelpEl.classList.remove("warn");
+        }
+
+        startMin = clamp(startMin, FLEX_MIN, FLEX_MAX);
+        const leaveMin = startMin + ADD_MINUTES;
+
+        const startTxt = fromMinutes(startMin);
+        const leaveTxt = fromMinutes(leaveMin);
+
+        startEchoEl.textContent = startTxt;
+        leaveTimeEl.textContent = leaveTxt;
+
+        // Notify main (tray) of the latest values
+        ipcRenderer.send("update-leave-time", {
+          start: startTxt,
+          leave: leaveTxt,
+        });
+      }
+
+      function useCurrentTimeClamped() {
+        const now = new Date();
+        const cur = `${String(now.getHours()).padStart(2, "0")}:${String(
+          now.getMinutes()
+        ).padStart(2, "0")}`;
+        startInput.value = cur;
+        update();
+      }
+
+      // Init
+      startInput.value = "08:00";
+      update();
+      document.getElementById("exampleEcho").textContent =
+        "Examples: 07:30 → 17:15, 08:00 → 17:45, 09:30 → 19:15";
+
+      // Events
+      startInput.addEventListener("input", update);
+      nowBtn.addEventListener("click", useCurrentTimeClamped);
+      defaultsBtn.addEventListener("click", () => {
+        startInput.value = "08:00";
+        update();
+      });
+      hideBtn.addEventListener("click", () => {
+        window.close();
+      }); // triggers "close to tray" in main
+
+      // Tray menu commands -> renderer
+      ipcRenderer.on("tray:use-now", () => useCurrentTimeClamped());
+      ipcRenderer.on("tray:set-0800", () => {
+        startInput.value = "08:00";
+        update();
+      });
+    </script>
+  </body>
+</html>
