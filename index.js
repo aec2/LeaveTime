@@ -72,15 +72,6 @@ function createTray() {
     { label: "Show/Hide", click: toggleWindow },
     { type: "separator" },
     {
-      label: "Use current time (clamped)",
-      click: () => win?.webContents.send("tray:use-now"),
-    },
-    {
-      label: "Set to 08:00",
-      click: () => win?.webContents.send("tray:set-0800"),
-    },
-    { type: "separator" },
-    {
       label: "Quit",
       click: () => {
         app.isQuiting = true;
