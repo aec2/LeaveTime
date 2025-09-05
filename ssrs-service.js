@@ -4,14 +4,15 @@ const cheerio = require('cheerio');
 
 class SSRSService {
   constructor() {
-    this.config = {
-      serverUrl: '',
-      reportPath: '',
-      username: '',
-      password: '',
-      domain: '',
-      useWindowsAuth: true
-    };
+      this.config = {
+        serverUrl: '',
+        reportPath: '',
+        reportUrl: '',
+        username: '',
+        password: '',
+        domain: '',
+        useWindowsAuth: true
+      };
   }
 
   // Configure SSRS connection
@@ -34,49 +35,49 @@ class SSRSService {
 
   // Build SSRS report URL
   buildReportUrl(format = 'XML', parameters = {}) {
+    // If a full reportUrl is provided, use it directly
+    if (this.config.reportUrl) {
+      const urlObj = new URL(this.config.reportUrl);
+      const params = urlObj.searchParams;
+      params.set('rs:Format', format);
+      Object.keys(parameters).forEach(key => params.set(key, parameters[key]));
+      urlObj.search = params.toString();
+      return urlObj.toString();
+    }
+
     if (!this.config.serverUrl || !this.config.reportPath) {
       throw new Error('SSRS server URL and report path must be configured');
     }
 
-    let url = `${this.config.serverUrl}/ReportServer/Pages/ReportViewer.aspx`;
+    const encodedPath = encodeURIComponent(this.config.reportPath);
     const params = new URLSearchParams();
-    
-    // Add report path
-    params.append('/', this.config.reportPath);
-    
-    // Add format
-    params.append('rs:Format', format);
-    
-    // Add custom parameters
-    Object.keys(parameters).forEach(key => {
-      params.append(key, parameters[key]);
-    });
-
-    return `${url}?${params.toString()}`;
+    params.set('rs:Format', format);
+    Object.keys(parameters).forEach(key => params.set(key, parameters[key]));
+    return `${this.config.serverUrl}/ReportServer/Pages/ReportViewer.aspx?${encodedPath}&${params.toString()}`;
   }
 
   // Alternative URL for direct report execution (more reliable for automation)
   buildDirectReportUrl(format = 'XML', parameters = {}) {
+    if (this.config.reportUrl) {
+      const urlObj = new URL(this.config.reportUrl);
+      const params = urlObj.searchParams;
+      params.set('rs:Format', format);
+      params.set('rs:Command', 'Render');
+      Object.keys(parameters).forEach(key => params.set(key, parameters[key]));
+      urlObj.search = params.toString();
+      return urlObj.toString();
+    }
+
     if (!this.config.serverUrl || !this.config.reportPath) {
       throw new Error('SSRS server URL and report path must be configured');
     }
 
-    let url = `${this.config.serverUrl}/ReportServer`;
+    const encodedPath = encodeURIComponent(this.config.reportPath);
     const params = new URLSearchParams();
-    
-    // Add report path
-    params.append('/', this.config.reportPath);
-    
-    // Add format and command
-    params.append('rs:Format', format);
-    params.append('rs:Command', 'Render');
-    
-    // Add custom parameters
-    Object.keys(parameters).forEach(key => {
-      params.append(key, parameters[key]);
-    });
-
-    return `${url}?${params.toString()}`;
+    params.set('rs:Format', format);
+    params.set('rs:Command', 'Render');
+    Object.keys(parameters).forEach(key => params.append(key, parameters[key]));
+    return `${this.config.serverUrl}/ReportServer?${encodedPath}&${params.toString()}`;
   }
 
   // Fetch entrance time from SSRS report
