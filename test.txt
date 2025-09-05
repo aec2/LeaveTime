@@ -1,42 +1,13 @@
-Perfect 👌 Let’s adapt your existing testConnection() in ssrs-service.js so it uses NTLM instead of always building a Basic header.
+Thanks for clarifying 👍 If your Test Connection is returning undefined even when you enter valid credentials, it usually means the function isn’t returning a clear true/false value but instead hitting an error path that doesn’t propagate properly.
 
-Here’s what to change:
-
-
----
-
-1. Install dependency
-
-In your project folder run:
-
-npm install axios-ntlm
+Here’s how you can fix it:
 
 
 ---
 
-2. Update ssrs-service.js
+1. Add Explicit Return in testConnection
 
-Find your current testConnection() function. It looks something like this:
-
-async testConnection() {
-  try {
-    const url = `${this.config.serverUrl}/ReportServer`;
-    const response = await axios.get(url, {
-      headers: this.getAuthHeaders(),
-      timeout: 5000,
-    });
-    return response.status === 200;
-  } catch (err) {
-    return false;
-  }
-}
-
-
----
-
-3. Replace with NTLM logic
-
-Here’s the modified version:
+Right now, the function may return undefined when the catch block doesn’t return a value. Update it like this:
 
 const { NtlmClient } = require("axios-ntlm");
 
@@ -45,53 +16,56 @@ async testConnection() {
     const client = NtlmClient({
       username: this.config.username,
       password: this.config.password,
-      domain: this.config.domain || "", // leave blank if not needed
+      domain: this.config.domain || "",
     });
 
     const url = `${this.config.serverUrl}/ReportServer`;
     const response = await client.get(url);
 
-    return response.status === 200;
+    if (response && response.status === 200) {
+      return { ok: true, status: response.status };
+    } else {
+      return { ok: false, status: response ? response.status : "No response" };
+    }
+
   } catch (err) {
-    console.error("NTLM connection failed:", err.message);
-    return false;
+    console.error("NTLM connection failed:", err);
+    return { ok: false, error: err.message || err.toString() };
   }
 }
 
 
 ---
 
-4. Keep both options (optional)
+2. Handle Result in UI (index.js)
 
-If you want to keep Basic auth for testing alongside NTLM, you can wrap it:
+In your onTestConnectionClick (or wherever you call testConnection):
 
-async testConnection() {
-  if (this.config.useNTLM) {
-    // NTLM path
-    const client = NtlmClient({
-      username: this.config.username,
-      password: this.config.password,
-      domain: this.config.domain || "",
-    });
-    const response = await client.get(`${this.config.serverUrl}/ReportServer`);
-    return response.status === 200;
+async function onTestConnectionClick() {
+  const config = getSSRSConfigFromUI();
+  const result = await ssrsService.testConnection(config);
+
+  if (result.ok) {
+    alert("Connected successfully! Status: " + result.status);
   } else {
-    // fallback to Basic auth
-    const response = await axios.get(`${this.config.serverUrl}/ReportServer`, {
-      headers: this.getAuthHeaders(),
-      timeout: 5000,
-    });
-    return response.status === 200;
+    alert("Connection failed: " + (result.error || result.status));
   }
 }
 
 
 ---
 
-✅ Now, when you click “Test Connection” in your desktop app, it will attempt NTLM instead of Basic and should work against your company’s SSRS server (which defaults to Windows Integrated auth).
+3. Why You Got undefined
+
+If the catch block didn’t return anything, JS implicitly returns undefined.
+
+In your old code, you just had return false; in some paths but not all.
+
+With the revised version above, you’ll always get a structured result ({ok: true/false, status/error}) instead of undefined.
+
 
 
 ---
 
-👉 Do you want me to also adjust your fetchReport() method in ssrs-service.js the same way, so the actual report data fetch will also use NTLM instead of Basic?
+👉 Do you want me to show you the exact before vs after diff for your testConnection so you can copy-paste directly into your ssrs-service.js without missing a spot?
 
