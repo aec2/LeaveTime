@@ -9,6 +9,7 @@ const {
   Notification,
 } = require("electron");
 const path = require("path");
+const fs = require("fs");
 const SSRSService = require("./ssrs-service");
 
 let win;
@@ -28,15 +29,50 @@ if (!gotLock) {
   });
 }
 
+async function measureNaturalContentHeight() {
+  if (!win) return null;
+  try {
+    const h = await win.webContents.executeJavaScript(`(() => {
+      const html = document.documentElement;
+      const body = document.body;
+      const main = document.querySelector('main.card');
+      if (!main) return Math.ceil(document.scrollingElement?.scrollHeight || body.scrollHeight || 520);
+      const prevHtmlH = html.style.height;
+      const prevBodyH = body.style.height;
+      const prevMainMinH = main.style.minHeight;
+      html.style.height = 'auto';
+      body.style.height = 'auto';
+      main.style.minHeight = '0';
+      const height = Math.ceil(main.scrollHeight);
+      html.style.height = prevHtmlH;
+      body.style.height = prevBodyH;
+      main.style.minHeight = prevMainMinH;
+      return height;
+    })()`);
+    return h;
+  } catch {
+    return null;
+  }
+}
+
+async function fitToContentHeight() {
+  const natural = await measureNaturalContentHeight();
+  if (!natural || !win) return;
+  const [contentWidth] = win.getContentSize();
+  const targetHeight = Math.max(300, Math.min(natural, 900));
+  win.setContentSize(contentWidth, targetHeight);
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 620,
     height: 520,
     minWidth: 480,
-    minHeight: 380,
+    minHeight: 300,
     backgroundColor: "#0f1221",
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "hidden",
     autoHideMenuBar: true,
+    useContentSize: true,
     webPreferences: {
       contextIsolation: false,
       nodeIntegration: true,
@@ -44,6 +80,12 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, "index.html"));
+
+  // Shrink initial window height to fit content (avoid bottom gap)
+  win.webContents.once("did-finish-load", async () => {
+    await fitToContentHeight();
+    setTimeout(fitToContentHeight, 200);
+  });
 
   win.on("close", (e) => {
     if (!app.isQuiting) {
@@ -69,7 +111,7 @@ function createTray() {
   try {
     tray = new Tray(baseImg);
     refreshTrayRemaining("08:00", leaveForToday || "17:45"); // or your real values
-    tray.setToolTip("My Leave Time");
+    tray.setToolTip("My Leave Time33");
     console.log("Tray created successfully");
   } catch (error) {
     console.error("Failed to create tray:", error);
@@ -130,6 +172,9 @@ function toggleWindow() {
 
 let leaveForToday = null;
 let remainingTimer = null;
+let notifyThresholdMin = 0;
+let hasNotifiedForCurrentLeave = false;
+let notifiedLeaveTime = null;
 
 async function createTrayIconWithText(text) {
   try {
@@ -271,6 +316,48 @@ async function renderTextToNativeImage(text) {
   }
 }
 
+function maybeSendLeaveNotification(start, leave) {
+  try {
+    if (!leave || notifyThresholdMin <= 0) return;
+    if (hasNotifiedForCurrentLeave && notifiedLeaveTime === leave) return;
+    const mins = minutesUntil(leave);
+    if (mins == null) return;
+    if (mins <= notifyThresholdMin) {
+      const title = "Leave reminder";
+      const body = `Leave at ${leave} (${mins} min left)`;
+      new Notification({ title, body, silent: false }).show();
+      hasNotifiedForCurrentLeave = true;
+      notifiedLeaveTime = leave;
+    }
+  } catch (err) {
+    console.error("Failed to show leave notification:", err);
+  }
+}
+
+// Lightweight renderer auto-reload for index.html changes
+function setupRendererAutoReload() {
+  try {
+    const target = path.join(__dirname, "index.html");
+    let debounce;
+    fs.watch(target, { persistent: false }, (eventType) => {
+      if (eventType !== "change") return;
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        if (win && !win.isDestroyed()) {
+          try {
+            console.log("index.html changed -> reloading renderer");
+            win.webContents.reloadIgnoringCache();
+          } catch (e) {
+            console.error("Failed to reload renderer:", e);
+          }
+        }
+      }, 120);
+    });
+  } catch (e) {
+    console.error("setupRendererAutoReload failed:", e);
+  }
+}
+
 // SSRS IPC Handlers
 ipcMain.handle("test-ssrs-connection", async (event, config) => {
   try {
@@ -299,24 +386,57 @@ ipcMain.handle("fetch-entrance-time", async (event, config) => {
 });
 
 ipcMain.on("update-leave-time", (_evt, payload) => {
-  const { start, leave } = payload || {};
+  const { start, leave, notifyBeforeMin } = payload || {};
   if (!start || !leave) return;
 
+  const threshold = Number.isFinite(notifyBeforeMin) ? notifyBeforeMin : 0;
+  notifyThresholdMin = Math.max(0, threshold);
+
+  if (leaveForToday !== leave) {
+    hasNotifiedForCurrentLeave = false;
+    notifiedLeaveTime = leave;
+  }
   leaveForToday = leave;
 
   // fire-and-forget
   refreshTrayRemaining(start, leave);
+  maybeSendLeaveNotification(start, leave);
 
   if (remainingTimer) clearInterval(remainingTimer);
   remainingTimer = setInterval(
-    () => refreshTrayRemaining(start, leaveForToday),
+    () => {
+      refreshTrayRemaining(start, leaveForToday);
+      maybeSendLeaveNotification(start, leaveForToday);
+    },
     60 * 1000
   );
+});
+
+// Renderer can request a fit-to-content reflow (e.g., after page switch)
+ipcMain.on('fit-to-content', () => {
+  fitToContentHeight();
+  setTimeout(fitToContentHeight, 100);
+});
+
+// Test notification IPC
+ipcMain.handle('notify-test', async (_evt, payload) => {
+  const threshold = Number.isFinite(payload?.threshold) ? payload.threshold : 0;
+  const leave = typeof payload?.leave === 'string' ? payload.leave : leaveForToday;
+  const title = 'Test notification';
+  const subtitle = threshold > 0 ? `Threshold: ${threshold} min` : 'Threshold: Off';
+  const body = leave ? `Current leave time: ${leave}` : 'No leave time calculated yet';
+  try {
+    new Notification({ title, subtitle, body, silent: false }).show();
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: e?.message || 'Failed to show notification' };
+  }
 });
 
 app.whenReady().then(() => {
   createWindow();
   createTray();
+  setupRendererAutoReload();
 });
 
 app.on("window-all-closed", () => {

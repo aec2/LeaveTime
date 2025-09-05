@@ -24,7 +24,8 @@
         width: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
       }
       body {
         background: radial-gradient(
@@ -41,7 +42,8 @@
       }
       .card {
         width: 100%;
-        height: 100%;
+        min-height: 100%;
+        height: auto;
         background: var(--card);
         border-radius: 0;
         box-shadow: none;
@@ -51,7 +53,7 @@
         flex-direction: column;
       }
       .title {
-        font-size: 22px;
+        font-size: clamp(18px, 2.5vw, 22px);
         font-weight: 700;
         letter-spacing: 0.2px;
         display: flex;
@@ -121,7 +123,9 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
+        flex-wrap: wrap;
       }
+      .big > div { flex: 1 1 220px; }
       .big .label {
         color: var(--muted);
         font-size: 13px;
@@ -129,7 +133,7 @@
       }
       .big .time {
         font-variant-numeric: tabular-nums;
-        font-size: 56px;
+        font-size: clamp(32px, 6vw, 56px);
         font-weight: 800;
         letter-spacing: 1px;
         color: #fff;
@@ -155,6 +159,24 @@
         gap: 10px;
         flex-wrap: wrap;
         justify-content: flex-end;
+      }
+
+      /* Responsive tweaks for smaller windows */
+      @media (max-width: 540px) {
+        .card { padding: 18px 16px 14px; }
+        .row { gap: 12px; }
+        .big { padding: 18px 16px; gap: 10px; }
+        .sub { flex-direction: column; gap: 8px; }
+        .footer { justify-content: center; }
+      }
+
+      @media (max-height: 640px) {
+        .card { padding: 18px 16px 14px; }
+        .title { font-size: clamp(16px, 2.2vw, 20px); }
+        .big { padding: 18px 16px; }
+        .big .label { font-size: 12px; }
+        .pill { padding: 5px 8px; font-size: 11px; }
+        .btn { padding: 8px 12px; }
       }
       .btn {
         border: 1px solid #2b3157;
@@ -240,6 +262,21 @@
         border-color: var(--accent);
         box-shadow: 0 0 0 2px rgba(122, 162, 255, 0.2);
       }
+      .settings-field select {
+        width: 100%;
+        font-size: 13px;
+        padding: 8px 10px;
+        color: #fff;
+        background: #111633;
+        border: 1px solid #2b3157;
+        border-radius: 8px;
+        outline: none;
+        -webkit-app-region: no-drag;
+      }
+      .settings-field select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(122, 162, 255, 0.2);
+      }
       .checkbox-field {
         display: flex;
         align-items: center;
@@ -276,116 +313,151 @@
     <main class="card">
       <div class="title"><span class="dot"></span> My Leave Time</div>
 
-      <div class="row">
-        <div class="field">
-          <label for="start">Start time (flex: 07:30–09:30)</label>
-          <input id="start" type="time" min="07:30" max="09:30" step="300" />
-          <div id="rangeHelp" class="helper">
-            Pick any time between 07:30 and 09:30.
+      <div id="homePage">
+        <div class="row">
+          <div class="field">
+            <label for="start">Start time (flex: 07:30–09:30)</label>
+            <input id="start" type="time" min="07:30" max="09:30" step="300" />
+            <div id="rangeHelp" class="helper">
+              Pick any time between 07:30 and 09:30.
+            </div>
+          </div>
+          <div class="field" style="display: flex; align-items: flex-end;">
+            <button class="btn primary" id="fetchBtn" style="padding: 12px 16px; height: fit-content;">
+              Fetch from SSRS
+            </button>
           </div>
         </div>
-        <div class="field" style="display: flex; align-items: flex-end;">
-          <button class="btn primary" id="fetchBtn" style="padding: 12px 16px; height: fit-content;">
-            Fetch from SSRS
-          </button>
+
+        <section class="big">
+          <div>
+            <div class="label">Calculated leave time</div>
+            <div id="leaveTime" class="time">—:—</div>
+          </div>
+          <div>
+            <div class="label">Selected start</div>
+            <div id="startEcho" class="pill">—:—</div>
+          </div>
+        </section>
+
+        <div class="sub">
+          <div class="pill">8h work + 45m break = add 9h 45m</div>
+          <div id="exampleEcho" class="helper">Example: 08:00 → 17:45</div>
+        </div>
+
+        <div class="footer">
+          <button class="btn" id="openSettingsBtn">Settings</button>
+          <button class="btn" id="hideBtn">Hide to tray</button>
         </div>
       </div>
 
-      <div class="settings-section">
+      <div id="settingsPage" style="display: none;">
         <div class="settings-header">
-          <div class="settings-title">SSRS Report Configuration</div>
-          <button class="toggle-btn" id="settingsToggle">Configure</button>
+          <div class="settings-title">Settings</div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="backBtn">Back</button>
+          </div>
         </div>
-        <div class="settings-content" id="settingsContent">
-          <div class="settings-row">
-            <div class="settings-field">
-              <label for="serverUrl">SSRS Server URL</label>
-              <input 
-                type="text" 
-                id="serverUrl" 
-                placeholder="http://your-server/ReportServer"
-              />
-            </div>
-            <div class="settings-field">
-              <label for="reportPath">Report Path</label>
-              <input 
-                type="text" 
-                id="reportPath" 
-                placeholder="/Reports/AttendanceReport"
-              />
-            </div>
-          </div>
-          
-          <div class="settings-row">
-            <div class="settings-field">
-              <label for="username">Username</label>
-              <input 
-                type="text" 
-                id="username" 
-                placeholder="domain\\username or username"
-              />
-            </div>
-            <div class="settings-field">
-              <label for="password">Password</label>
-              <input 
-                type="password" 
-                id="password" 
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
-          
-          <div class="settings-row">
-            <div class="settings-field">
-              <label for="employeeId">Employee ID (optional)</label>
-              <input 
-                type="text" 
-                id="employeeId" 
-                placeholder="Leave empty for current user"
-              />
-            </div>
-            <div class="settings-field">
-              <label for="domain">Domain (optional)</label>
-              <input 
-                type="text" 
-                id="domain" 
-                placeholder="COMPANY"
-              />
-            </div>
-          </div>
-          
-          <div class="checkbox-field">
-            <input type="checkbox" id="useWindowsAuth" checked />
-            <label for="useWindowsAuth">Use Windows Authentication</label>
-          </div>
-          
-          <div style="display: flex; gap: 10px; margin-top: 12px;">
-            <button class="btn" id="testConnectionBtn">Test Connection</button>
-            <button class="btn" id="saveSettingsBtn">Save Settings</button>
-          </div>
-          
-          <div id="statusMessage" class="status-message" style="display: none;"></div>
-        </div>
-      </div>
 
-      <section class="big">
-        <div>
-          <div class="label">Calculated leave time</div>
-          <div id="leaveTime" class="time">—:—</div>
+        <div class="settings-section">
+          <div class="settings-header">
+            <div class="settings-title">SSRS Report Configuration</div>
+          </div>
+          <div class="settings-content show" id="settingsContent">
+            <div class="settings-row">
+              <div class="settings-field">
+                <label for="serverUrl">SSRS Server URL</label>
+                <input 
+                  type="text" 
+                  id="serverUrl" 
+                  placeholder="http://your-server/ReportServer"
+                />
+              </div>
+              <div class="settings-field">
+                <label for="reportPath">Report Path</label>
+                <input 
+                  type="text" 
+                  id="reportPath" 
+                  placeholder="/Reports/AttendanceReport"
+                />
+              </div>
+            </div>
+            
+            <div class="settings-row">
+              <div class="settings-field">
+                <label for="username">Username</label>
+                <input 
+                  type="text" 
+                  id="username" 
+                  placeholder="domain\\username or username"
+                />
+              </div>
+              <div class="settings-field">
+                <label for="password">Password</label>
+                <input 
+                  type="password" 
+                  id="password" 
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+            
+            <div class="settings-row">
+              <div class="settings-field">
+                <label for="employeeId">Employee ID (optional)</label>
+                <input 
+                  type="text" 
+                  id="employeeId" 
+                  placeholder="Leave empty for current user"
+                />
+              </div>
+              <div class="settings-field">
+                <label for="domain">Domain (optional)</label>
+                <input 
+                  type="text" 
+                  id="domain" 
+                  placeholder="COMPANY"
+                />
+              </div>
+            </div>
+            
+            <div class="checkbox-field">
+              <input type="checkbox" id="useWindowsAuth" checked />
+              <label for="useWindowsAuth">Use Windows Authentication</label>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 12px;">
+              <button class="btn" id="testConnectionBtn">Test Connection</button>
+              <button class="btn" id="saveSettingsBtn">Save Settings</button>
+            </div>
+            
+            <div id="statusMessage" class="status-message" style="display: none;"></div>
+          </div>
         </div>
-        <div>
-          <div class="label">Selected start</div>
-          <div id="startEcho" class="pill">—:—</div>
+
+        <div class="settings-section">
+          <div class="settings-header">
+            <div class="settings-title">Notifications</div>
+          </div>
+          <div class="settings-content show" id="notifySettings">
+            <div class="settings-row">
+              <div class="settings-field">
+                <label for="notifyBefore">Notify before leave</label>
+                <select id="notifyBefore">
+                  <option value="off">Off</option>
+                  <option value="5">5 minutes</option>
+                  <option value="10">10 minutes</option>
+                  <option value="15">15 minutes</option>
+                  <option value="20">20 minutes</option>
+                  <option value="30">30 minutes</option>
+                  <option value="45">45 minutes</option>
+                  <option value="60">60 minutes</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
 
-      <div class="sub">
-        <div class="pill">8h work + 45m break = add 9h 45m</div>
-        <div id="exampleEcho" class="helper">Example: 08:00 → 17:45</div>
-      </div>
-
-      <div class="footer">
-        <button class="btn" id="hideBtn">Hide to tray</button>
       </div>
     </main>
 
@@ -402,10 +474,13 @@
       const startEchoEl = document.getElementById("startEcho");
       const rangeHelpEl = document.getElementById("rangeHelp");
       const hideBtn = document.getElementById("hideBtn");
-      
+      const openSettingsBtn = document.getElementById("openSettingsBtn");
+      const backBtn = document.getElementById("backBtn");
+      const homePage = document.getElementById("homePage");
+      const settingsPage = document.getElementById("settingsPage");
+       
       // SSRS elements
       const fetchBtn = document.getElementById("fetchBtn");
-      const settingsToggle = document.getElementById("settingsToggle");
       const settingsContent = document.getElementById("settingsContent");
       const serverUrlInput = document.getElementById("serverUrl");
       const reportPathInput = document.getElementById("reportPath");
@@ -417,6 +492,7 @@
       const testConnectionBtn = document.getElementById("testConnectionBtn");
       const saveSettingsBtn = document.getElementById("saveSettingsBtn");
       const statusMessage = document.getElementById("statusMessage");
+      const notifySelect = document.getElementById("notifyBefore");
 
       function toMinutes(hhmm) {
         const [h, m] = hhmm.split(":").map(Number);
@@ -430,6 +506,19 @@
       }
       function clamp(v, min, max) {
         return Math.min(Math.max(v, min), max);
+      }
+
+      function showHome() {
+        if (homePage) homePage.style.display = '';
+        if (settingsPage) settingsPage.style.display = 'none';
+        hideStatus();
+        ipcRenderer.send('fit-to-content');
+      }
+
+      function showSettings() {
+        if (homePage) homePage.style.display = 'none';
+        if (settingsPage) settingsPage.style.display = '';
+        ipcRenderer.send('fit-to-content');
       }
 
       function update() {
@@ -458,7 +547,34 @@
         ipcRenderer.send("update-leave-time", {
           start: startTxt,
           leave: leaveTxt,
+          notifyBeforeMin: getNotifyBeforeMinutes(),
         });
+      }
+
+      function getNotifyBeforeMinutes() {
+        const val = (notifySelect && notifySelect.value) || 'off';
+        if (val === 'off') return 0;
+        const n = parseInt(val, 10);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+      }
+
+      function loadNotifySettings() {
+        try {
+          const saved = localStorage.getItem('notifyConfig');
+          if (saved) {
+            const cfg = JSON.parse(saved);
+            if (notifySelect && cfg && (cfg.minutesBefore === 0 || cfg.minutesBefore)) {
+              notifySelect.value = cfg.minutesBefore > 0 ? String(cfg.minutesBefore) : 'off';
+            }
+          } else {
+            if (notifySelect) notifySelect.value = '15';
+          }
+        } catch {}
+      }
+
+      function saveNotifySettings() {
+        const cfg = { minutesBefore: getNotifyBeforeMinutes() };
+        localStorage.setItem('notifyConfig', JSON.stringify(cfg));
       }
 
       function useCurrentTimeClamped() {
@@ -472,8 +588,9 @@
 
       // Init
       startInput.value = "08:00";
-      update();
+      loadNotifySettings();
       loadSSRSSettings(); // Load saved SSRS configuration
+      update();
       document.getElementById("exampleEcho").textContent =
         "Examples: 07:30 → 17:15, 08:00 → 17:45, 09:30 → 19:15";
 
@@ -565,8 +682,8 @@
         const config = getSSRSConfig();
         if (!config.serverUrl || !config.reportPath) {
           showStatus('Please configure SSRS settings first', 'error');
-          settingsContent.classList.add('show');
-          settingsToggle.textContent = 'Hide';
+          showSettings();
+          ipcRenderer.send('fit-to-content');
           return;
         }
 
@@ -597,18 +714,21 @@
         window.close();
       }); // triggers "close to tray" in main
 
-      // SSRS Events
-      settingsToggle.addEventListener('click', () => {
-        const isShow = settingsContent.classList.toggle('show');
-        settingsToggle.textContent = isShow ? 'Hide' : 'Configure';
-        if (!isShow) {
-          hideStatus();
-        }
-      });
+      // Navigation
+      if (openSettingsBtn) openSettingsBtn.addEventListener('click', showSettings);
+      if (backBtn) backBtn.addEventListener('click', showHome);
 
       fetchBtn.addEventListener('click', fetchEntranceTime);
       testConnectionBtn.addEventListener('click', testSSRSConnection);
       saveSettingsBtn.addEventListener('click', saveSSRSSettings);
+
+      // Notification Events
+      if (notifySelect) {
+        notifySelect.addEventListener('change', () => {
+          saveNotifySettings();
+          update();
+        });
+      }
 
       // Tray menu commands -> renderer
       ipcRenderer.on("tray:use-now", () => useCurrentTimeClamped());
