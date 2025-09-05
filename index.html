@@ -366,9 +366,19 @@
           <div class="settings-content show" id="settingsContent">
             <div class="settings-row">
               <div class="settings-field">
+                <label for="reportUrl">Full Report URL (optional)</label>
+                <input
+                  type="text"
+                  id="reportUrl"
+                  placeholder="https://reports.company.com/Reports/report/Folder/ReportName"
+                />
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-field">
                 <label for="serverUrl">SSRS Server URL</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   id="serverUrl" 
                   placeholder="http://your-server/ReportServer"
                 />
@@ -482,6 +492,7 @@
       // SSRS elements
       const fetchBtn = document.getElementById("fetchBtn");
       const settingsContent = document.getElementById("settingsContent");
+      const reportUrlInput = document.getElementById("reportUrl");
       const serverUrlInput = document.getElementById("serverUrl");
       const reportPathInput = document.getElementById("reportPath");
       const usernameInput = document.getElementById("username");
@@ -614,6 +625,7 @@
 
       function getSSRSConfig() {
         return {
+          reportUrl: reportUrlInput.value.trim(),
           serverUrl: serverUrlInput.value.trim(),
           reportPath: reportPathInput.value.trim(),
           username: usernameInput.value.trim(),
@@ -625,6 +637,7 @@
       }
 
       function setSSRSConfig(config) {
+        reportUrlInput.value = config.reportUrl || '';
         serverUrlInput.value = config.serverUrl || '';
         reportPathInput.value = config.reportPath || '';
         usernameInput.value = config.username || '';
@@ -654,8 +667,8 @@
 
       async function testSSRSConnection() {
         const config = getSSRSConfig();
-        if (!config.serverUrl) {
-          showStatus('Please enter SSRS Server URL', 'error');
+        if (!config.reportUrl && !config.serverUrl) {
+          showStatus('Please enter SSRS Server URL or full report URL', 'error');
           return;
         }
 
@@ -680,7 +693,7 @@
 
       async function fetchEntranceTime() {
         const config = getSSRSConfig();
-        if (!config.serverUrl || !config.reportPath) {
+        if (!config.reportUrl && (!config.serverUrl || !config.reportPath)) {
           showStatus('Please configure SSRS settings first', 'error');
           showSettings();
           ipcRenderer.send('fit-to-content');
