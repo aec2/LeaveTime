@@ -13,6 +13,10 @@ The SSRS (SQL Server Reporting Services) integration allows you to automatically
 ### 2. Required Configuration
 Fill in the following fields:
 
+**Full Report URL (optional)**: The complete link to your report
+- Example: `https://reports.company.com/Reports/report/HR/AttendanceReport`
+- When provided, the server URL and report path fields can be left blank
+
 **SSRS Server URL**: The base URL of your SSRS server
 - Example: `http://your-server/ReportServer`
 - Example: `https://reports.company.com/ReportServer`
