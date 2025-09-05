@@ -1,0 +1,97 @@
+Perfect 👌 Let’s adapt your existing testConnection() in ssrs-service.js so it uses NTLM instead of always building a Basic header.
+
+Here’s what to change:
+
+
+---
+
+1. Install dependency
+
+In your project folder run:
+
+npm install axios-ntlm
+
+
+---
+
+2. Update ssrs-service.js
+
+Find your current testConnection() function. It looks something like this:
+
+async testConnection() {
+  try {
+    const url = `${this.config.serverUrl}/ReportServer`;
+    const response = await axios.get(url, {
+      headers: this.getAuthHeaders(),
+      timeout: 5000,
+    });
+    return response.status === 200;
+  } catch (err) {
+    return false;
+  }
+}
+
+
+---
+
+3. Replace with NTLM logic
+
+Here’s the modified version:
+
+const { NtlmClient } = require("axios-ntlm");
+
+async testConnection() {
+  try {
+    const client = NtlmClient({
+      username: this.config.username,
+      password: this.config.password,
+      domain: this.config.domain || "", // leave blank if not needed
+    });
+
+    const url = `${this.config.serverUrl}/ReportServer`;
+    const response = await client.get(url);
+
+    return response.status === 200;
+  } catch (err) {
+    console.error("NTLM connection failed:", err.message);
+    return false;
+  }
+}
+
+
+---
+
+4. Keep both options (optional)
+
+If you want to keep Basic auth for testing alongside NTLM, you can wrap it:
+
+async testConnection() {
+  if (this.config.useNTLM) {
+    // NTLM path
+    const client = NtlmClient({
+      username: this.config.username,
+      password: this.config.password,
+      domain: this.config.domain || "",
+    });
+    const response = await client.get(`${this.config.serverUrl}/ReportServer`);
+    return response.status === 200;
+  } else {
+    // fallback to Basic auth
+    const response = await axios.get(`${this.config.serverUrl}/ReportServer`, {
+      headers: this.getAuthHeaders(),
+      timeout: 5000,
+    });
+    return response.status === 200;
+  }
+}
+
+
+---
+
+✅ Now, when you click “Test Connection” in your desktop app, it will attempt NTLM instead of Basic and should work against your company’s SSRS server (which defaults to Windows Integrated auth).
+
+
+---
+
+👉 Do you want me to also adjust your fetchReport() method in ssrs-service.js the same way, so the actual report data fetch will also use NTLM instead of Basic?
+
