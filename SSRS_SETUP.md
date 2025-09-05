@@ -21,6 +21,8 @@ Fill in the following fields:
 - Example: `/Reports/AttendanceReport`
 - Example: `/HR/EmployeeTimeTracking`
 
+Alternatively you may supply a full report URL using the `reportUrl` setting.  When this is provided the server URL and report path fields are ignored and the service connects directly to that URL.
+
 **Username**: Your domain username
 - Example: `john.doe` or `COMPANY\john.doe`
 
